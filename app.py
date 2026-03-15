@@ -22,7 +22,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-client = Groq(api_key="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")
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
@@ -259,9 +259,7 @@ def submit_complaint():
         priority = request.form['priority']
         location = request.form.get('location', 'Main Campus')
 
-        # Check for duplicate
         dup_id = check_duplicates(title, description)
-
         ai = analyze_complaint_with_ai(title, description, category)
 
         complaint = Complaint(
@@ -415,3 +413,5 @@ if __name__ == '__main__':
         db.create_all()
     check_escalations()
     socketio.run(app, debug=True, use_reloader=False)
+
+
