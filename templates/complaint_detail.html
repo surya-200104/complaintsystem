@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint Detail - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+
+<!-- Notification Toast -->
+<div class="notification-toast" id="toast"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="navbar-brand">🛡️ ComplaintPro</div>
+    <div class="navbar-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+        <span class="navbar-user">👤 {{ current_user.username }}</span>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-outline btn-small">Dashboard</a>
+        {% else %}
+        <a href="{{ url_for('user_dashboard') }}" class="btn-outline btn-small">Dashboard</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Logout</a>
+    </div>
+</nav>
+
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            {% if current_user.is_admin %}
+            <li><a href="{{ url_for('admin_dashboard') }}">⚙️ Dashboard</a></li>
+            <li><a href="{{ url_for('heatmap') }}">🗺️ Heatmap</a></li>
+            {% else %}
+            <li><a href="{{ url_for('user_dashboard') }}">🏠 Dashboard</a></li>
+            <li><a href="{{ url_for('submit_complaint') }}">📢 New Complaint</a></li>
+            <li><a href="{{ url_for('profile') }}">👤 Profile</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('logout') }}">🚪 Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div class="page-title">Complaint Details</div>
+
+        <!-- Status Timeline -->
+        <div class="status-timeline">
+            <div class="timeline-step {% if complaint.status in ['Pending','In Progress','Resolved'] %}done{% endif %}">
+                <div class="timeline-dot">✓</div>
+                <div class="timeline-label">Submitted</div>
+            </div>
+            <div class="timeline-step {% if complaint.status == 'In Progress' %}active{% elif complaint.status == 'Resolved' %}done{% endif %}">
+                <div class="timeline-dot">⚙</div>
+                <div class="timeline-label">In Progress</div>
+            </div>
+            <div class="timeline-step {% if complaint.status == 'Resolved' %}active{% endif %}">
+                <div class="timeline-dot">✓</div>
+                <div class="timeline-label">Resolved</div>
+            </div>
+        </div>
+
+        <!-- Duplicate Warning -->
+        {% if complaint.is_duplicate %}
+        <div style="background:#fff7ed; border:1.5px solid #f97316; border-radius:10px; padding:12px 18px; margin-bottom:20px; font-size:14px; color:#9a3412;">
+            ⚠️ <strong>Duplicate Detected:</strong> This complaint is similar to
+            <a href="{{ url_for('complaint_detail', id=complaint.duplicate_of) }}" style="color:#f97316; font-weight:700;">
+                Complaint #{{ complaint.duplicate_of }}
+            </a>. Both will be resolved together.
+        </div>
+        {% endif %}
+
+        <!-- Escalation Warning -->
+        {% if complaint.priority == 'Critical' and complaint.status == 'Pending' %}
+        <div style="background:#fff1f2; border:1.5px solid #ef4444; border-radius:10px; padding:12px 18px; margin-bottom:20px; font-size:14px; color:#991b1b;">
+            🚨 <strong>Auto Escalated:</strong> This complaint has been pending for more than 3 days and has been escalated to Critical priority!
+        </div>
+        {% endif %}
+
+        <!-- Complaint Detail Card -->
+        <div class="detail-card">
+            <div class="detail-title">{{ complaint.title }}</div>
+            <div class="detail-meta">
+                <span>📁 {{ complaint.category }}</span>
+                <span>
+                    <span class="priority-badge priority-{{ complaint.priority.lower() }}">
+                        {{ complaint.priority }}
+                    </span>
+                </span>
+                <span>
+                    <span class="badge
+                        {% if complaint.status == 'Pending' %}badge-pending
+                        {% elif complaint.status == 'In Progress' %}badge-progress
+                        {% else %}badge-resolved{% endif %}">
+                        {{ complaint.status }}
+                    </span>
+                </span>
+                <span>📅 {{ complaint.date_posted.strftime('%d-%m-%Y %H:%M') }}</span>
+                {% if complaint.ai_estimated_time %}
+                <span>⏱️ Est. Resolution: <strong>{{ complaint.ai_estimated_time }}</strong></span>
+                {% endif %}
+                {% if complaint.location %}
+                <span>📍 {{ complaint.location }}</span>
+                {% endif %}
+            </div>
+
+            {% if not current_user.is_admin %}
+            <form action="/complaint/{{ complaint.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this complaint?')">
+                <button type="submit" style="background:#dc2626; color:white; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; margin-top:10px; font-size:14px;">
+                    🗑️ Delete Complaint
+                </button>
+            </form>
+            {% endif %}
+
+            <div class="detail-description">
+                {{ complaint.description }}
+            </div>
+
+            {% if complaint.attachment %}
+            <div style="margin-bottom:15px;">
+                <strong>📎 Attachment:</strong>
+                <a href="{{ url_for('static', filename='uploads/' + complaint.attachment) }}"
+                   target="_blank" style="color:#4f46e5; margin-left:8px;">
+                   View Attachment
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- AI Analysis Box -->
+            {% if complaint.ai_summary %}
+            <div class="ai-box">
+                <div class="ai-box-header">🤖 AI Analysis</div>
+                <div class="ai-box-body">
+                    {% if complaint.ai_summary %}
+                    <div class="ai-item">
+                        <span class="ai-label">📋 Summary:</span>
+                        <span>{{ complaint.ai_summary }}</span>
+                    </div>
+                    {% endif %}
+                    {% if complaint.ai_insight %}
+                    <div class="ai-item">
+                        <span class="ai-label">💡 Insight:</span>
+                        <span>{{ complaint.ai_insight }}</span>
+                    </div>
+                    {% endif %}
+                    {% if complaint.ai_estimated_time %}
+                    <div class="ai-item">
+                        <span class="ai-label">⏱️ Estimated Resolution:</span>
+                        <span>{{ complaint.ai_estimated_time }}</span>
+                    </div>
+                    {% endif %}
+                    {% if complaint.ai_suggested_reply and current_user.is_admin %}
+                    <div class="ai-item">
+                        <span class="ai-label">💬 Suggested Reply (Admin):</span>
+                        <span>{{ complaint.ai_suggested_reply }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Admin Status Update -->
+            {% if current_user.is_admin %}
+            <form method="POST" action="{{ url_for('update_status', id=complaint.id) }}"
+                  style="display:flex; gap:10px; align-items:center; margin-top:15px;">
+                <select name="status" style="padding:9px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <option value="Pending" {% if complaint.status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="In Progress" {% if complaint.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                    <option value="Resolved" {% if complaint.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+                <button type="submit" class="btn-primary btn-small">Update Status</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Feedback & Rating (only for user, only when resolved, only if not already rated) -->
+        {% if not current_user.is_admin and complaint.status == 'Resolved' and not complaint.rating %}
+        <div class="detail-card" style="margin-top:20px;">
+            <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:15px;">⭐ Rate Resolution</div>
+            <form method="POST" action="{{ url_for('submit_feedback', id=complaint.id) }}">
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:8px;">Rating:</label>
+                    <div style="display:flex; gap:10px;">
+                        {% for i in [1,2,3,4,5] %}
+                        <label style="cursor:pointer; font-size:22px;">
+                            <input type="radio" name="rating" value="{{ i }}" required style="display:none;">
+                            <span class="star" data-val="{{ i }}">⭐</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:8px;">Feedback:</label>
+                    <textarea name="feedback" rows="3" placeholder="How satisfied are you with the resolution?" required
+                        style="width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; outline:none; resize:none;"></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Submit Feedback</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Show existing rating -->
+        {% if complaint.rating %}
+        <div class="detail-card" style="margin-top:20px;">
+            <div style="font-size:15px; font-weight:700; color:#1e293b; margin-bottom:10px;">⭐ Your Feedback</div>
+            <div style="font-size:22px; margin-bottom:8px;">
+                {% for i in range(complaint.rating) %}⭐{% endfor %}
+            </div>
+            {% if complaint.feedback %}
+            <div style="font-size:14px; color:#64748b; background:#f8fafc; padding:12px; border-radius:8px;">
+                {{ complaint.feedback }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Reply Thread -->
+        <div class="reply-thread">
+            <div class="reply-header">💬 Conversation Thread</div>
+
+            <div class="reply-messages" id="replyMessages">
+                {% if replies %}
+                    {% for reply in replies %}
+                    <div class="reply-message">
+                        <div class="reply-avatar {{ 'admin' if reply.is_admin else 'user' }}">
+                            {{ '⚙️' if reply.is_admin else '👤' }}
+                        </div>
+                        <div class="reply-bubble">
+                            <div class="reply-meta">
+                                <strong>{{ reply.user.username }}</strong>
+                                {{ '(Admin)' if reply.is_admin else '' }} •
+                                {{ reply.date_posted.strftime('%d-%m-%Y %H:%M') }}
+                            </div>
+                            <div class="reply-text {{ 'admin-reply' if reply.is_admin else '' }}">
+                                {{ reply.message }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div style="text-align:center; color:#64748b; padding:20px;">
+                    No messages yet. Start the conversation!
+                </div>
+                {% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('add_reply', id=complaint.id) }}" class="reply-form">
+                <textarea name="message" rows="2" placeholder="Type your message here..." required></textarea>
+                <button type="submit" class="btn-primary">Send</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    var socket = io();
+    var complaintId = {{ complaint.id }};
+
+    socket.emit('join', {room: 'complaint_' + complaintId});
+
+    socket.on('new_reply', function(data) {
+        var messages = document.getElementById('replyMessages');
+        var isAdmin = data.is_admin;
+        var html = `
+            <div class="reply-message">
+                <div class="reply-avatar ${isAdmin ? 'admin' : 'user'}">
+                    ${isAdmin ? '⚙️' : '👤'}
+                </div>
+                <div class="reply-bubble">
+                    <div class="reply-meta">
+                        <strong>${data.username}</strong> ${isAdmin ? '(Admin)' : ''} • ${data.time}
+                    </div>
+                    <div class="reply-text ${isAdmin ? 'admin-reply' : ''}">
+                        ${data.message}
+                    </div>
+                </div>
+            </div>
+        `;
+        messages.innerHTML += html;
+        messages.scrollTop = messages.scrollHeight;
+    });
+
+    socket.on('status_update', function(data) {
+        var toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        toast.innerHTML = '🔔 Status updated to: <strong>' + data.status + '</strong>';
+        setTimeout(function() {
+            toast.style.display = 'none';
+            location.reload();
+        }, 3000);
+    });
+
+    socket.on('escalation_alert', function(data) {
+        var toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        toast.style.background = '#dc2626';
+        toast.innerHTML = '🚨 Complaint <strong>' + data.title + '</strong> has been auto-escalated to Critical!';
+        setTimeout(function() {
+            toast.style.display = 'none';
+            location.reload();
+        }, 4000);
+    });
+
+    // Star rating highlight
+    document.querySelectorAll('.star').forEach(function(star) {
+        star.addEventListener('click', function() {
+            var val = parseInt(this.getAttribute('data-val'));
+            this.closest('form').querySelector('input[value="' + val + '"]').checked = true;
+            document.querySelectorAll('.star').forEach(function(s) {
+                s.style.opacity = parseInt(s.getAttribute('data-val')) <= val ? '1' : '0.3';
+            });
+        });
+    });
+
+    // Dark Mode
+    function toggleDark() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        document.querySelector('.dark-toggle').textContent =
+            document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.dark-toggle').textContent = '☀️';
+    }
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

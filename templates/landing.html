@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComplaintPro - Smart Complaint Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="landing-body">
+
+    <!-- Navbar -->
+    <nav class="landing-nav">
+        <div class="nav-brand">🛡️ ComplaintPro</div>
+        <div class="nav-links">
+            <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+            <a href="{{ url_for('login') }}" class="btn-outline">Login</a>
+            <a href="{{ url_for('register') }}" class="btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <span class="hero-badge">🚀 Smart Complaint Management</span>
+            <h1>Resolve Complaints <span class="highlight">Faster</span> Than Ever</h1>
+            <p>A real-time complaint management platform that connects users and administrators for quick and transparent issue resolution.</p>
+            <div class="hero-buttons">
+                <a href="{{ url_for('register') }}" class="btn-primary btn-large">Get Started Free</a>
+                <a href="{{ url_for('login') }}" class="btn-outline btn-large">Login</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="hero-card">
+                <div class="card-header">📋 Recent Complaints</div>
+                <div class="fake-complaint">
+                    <span class="fake-badge critical">Critical</span>
+                    <span>Server Room AC Failure</span>
+                </div>
+                <div class="fake-complaint">
+                    <span class="fake-badge high">High</span>
+                    <span>Water Leakage in Block B</span>
+                </div>
+                <div class="fake-complaint">
+                    <span class="fake-badge medium">Medium</span>
+                    <span>Broken Street Light</span>
+                </div>
+                <div class="fake-complaint">
+                    <span class="fake-badge low">Low</span>
+                    <span>Cafeteria Menu Update</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="stat-item">
+            <h2>500+</h2>
+            <p>Complaints Resolved</p>
+        </div>
+        <div class="stat-item">
+            <h2>98%</h2>
+            <p>Satisfaction Rate</p>
+        </div>
+        <div class="stat-item">
+            <h2>24/7</h2>
+            <p>Real-time Support</p>
+        </div>
+        <div class="stat-item">
+            <h2>< 2hrs</h2>
+            <p>Average Response Time</p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <h2>Why Choose ComplaintPro?</h2>
+        <p class="section-subtitle">Everything you need to manage complaints efficiently</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-time Updates</h3>
+                <p>Get instant notifications when your complaint status changes using Socket.IO technology</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <h3>Two-way Communication</h3>
+                <p>Chat directly with administrators through our real-time reply thread system</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Analytics Dashboard</h3>
+                <p>Administrators get full analytics with charts and statistics for better decision making</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📎</div>
+                <h3>File Attachments</h3>
+                <p>Attach images and documents to complaints for better clarity and faster resolution</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Priority System</h3>
+                <p>Set complaint priority from Low to Critical so urgent issues get resolved first</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Secure & Private</h3>
+                <p>Your data is encrypted and secure with role-based access control</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <p>🛡️ ComplaintPro — Built with Flask & Socket.IO</p>
+        <p>MCA Final Year Project</p>
+    </footer>
+
+<script>
+function toggleDark() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    document.querySelector('.dark-toggle').textContent =
+        document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+}
+if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+    document.querySelector('.dark-toggle').textContent = '☀️';
+}
+</script>
+</body>
+</html>

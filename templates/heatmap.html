@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Heatmap - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        #map { height: 520px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+        .legend { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-brand">🛡️ ComplaintPro Admin</div>
+    <div class="navbar-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+        <span class="navbar-user">⚙️ {{ current_user.username }}</span>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-outline btn-small">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Logout</a>
+    </div>
+</nav>
+
+<div class="page-wrapper">
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('admin_dashboard') }}">⚙️ Dashboard</a></li>
+            <li><a href="{{ url_for('heatmap') }}" class="active">🗺️ Heatmap</a></li>
+            <li><a href="{{ url_for('logout') }}">🚪 Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="page-title">🗺️ Campus Complaint Heatmap</div>
+
+        <!-- Stats Row -->
+        <div class="stats-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom:20px;">
+            <div class="stat-card">
+                <div class="stat-icon blue">📍</div>
+                <div class="stat-info">
+                    <h3 id="totalPins">0</h3>
+                    <p>Total Complaints</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red">🔴</div>
+                <div class="stat-info">
+                    <h3 id="criticalCount">0</h3>
+                    <p>Critical</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">🟡</div>
+                <div class="stat-info">
+                    <h3 id="pendingCount">0</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">✅</div>
+                <div class="stat-info">
+                    <h3 id="resolvedCount">0</h3>
+                    <p>Resolved</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="table-card" style="padding:20px; margin-bottom:20px;">
+            <div class="table-header" style="margin-bottom:15px;">
+                <h3>📍 Live Complaint Locations — Aditya University Campus</h3>
+                <div style="display:flex; gap:8px;">
+                    <select id="filterMap" onchange="filterMarkers()" style="padding:7px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                        <option value="all">All Complaints</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- Complaints List -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3>📋 Complaints by Location</h3>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Location</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in complaints %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ c.title }}</strong></td>
+                        <td>📍 {{ c.location }}</td>
+                        <td><span class="priority-badge priority-{{ c.priority.lower() }}">{{ c.priority }}</span></td>
+                        <td>
+                            <span class="badge
+                                {% if c.status == 'Pending' %}badge-pending
+                                {% elif c.status == 'In Progress' %}badge-progress
+                                {% else %}badge-resolved{% endif %}">
+                                {{ c.status }}
+                            </span>
+                        </td>
+                        <td><a href="{{ url_for('complaint_detail', id=c.id) }}" class="btn-outline btn-small">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Campus locations with coordinates
+var locationCoords = {
+    'Main Campus':      [17.0897, 82.0707],
+    'Library':          [17.0901, 82.0702],
+    'Canteen':          [17.0893, 82.0712],
+    'Block A':          [17.0904, 82.0698],
+    'Block B':          [17.0899, 82.0715],
+    'Block C':          [17.0895, 82.0705],
+    'Hostel':           [17.0908, 82.0720],
+    'Parking':          [17.0890, 82.0695],
+    'Sports Ground':    [17.0912, 82.0710],
+    'Lab':              [17.0900, 82.0708],
+    'Admin Office':     [17.0896, 82.0700],
+    'Seminar Hall':     [17.0902, 82.0714],
+};
+
+var priorityColors = {
+    'Critical': '#ef4444',
+    'High':     '#f97316',
+    'Medium':   '#f59e0b',
+    'Low':      '#10b981'
+};
+
+var statusColors = {
+    'Pending':     '#f59e0b',
+    'In Progress': '#06b6d4',
+    'Resolved':    '#10b981'
+};
+
+// Init map
+var map = L.map('map').setView([17.0897, 82.0707], 17);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// Complaints data
+var complaintsData = {{ complaints | tojson }};
+var allMarkers = [];
+
+// Update stats
+document.getElementById('totalPins').textContent = complaintsData.length;
+document.getElementById('criticalCount').textContent = complaintsData.filter(c => c.priority === 'Critical' || c.priority === 'High').length;
+document.getElementById('pendingCount').textContent = complaintsData.filter(c => c.status === 'Pending').length;
+document.getElementById('resolvedCount').textContent = complaintsData.filter(c => c.status === 'Resolved').length;
+
+function addMarkers(data) {
+    // Clear existing
+    allMarkers.forEach(m => map.removeLayer(m));
+    allMarkers = [];
+
+    data.forEach(function(c) {
+        var coords = locationCoords[c.location] || locationCoords['Main Campus'];
+        // Add small random offset so pins don't stack
+        var lat = coords[0] + (Math.random() - 0.5) * 0.0003;
+        var lng = coords[1] + (Math.random() - 0.5) * 0.0003;
+
+        var color = priorityColors[c.priority] || '#6b7280';
+
+        var icon = L.divIcon({
+            className: '',
+            html: `<div style="
+                background:${color};
+                width:28px; height:28px;
+                border-radius:50% 50% 50% 0;
+                transform:rotate(-45deg);
+                border:3px solid white;
+                box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            "></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 28]
+        });
+
+        var marker = L.marker([lat, lng], { icon: icon });
+
+        var statusColor = statusColors[c.status] || '#6b7280';
+        marker.bindPopup(`
+            <div style="min-width:200px; font-family:Segoe UI,sans-serif;">
+                <div style="font-weight:700; font-size:14px; margin-bottom:8px; color:#1e293b;">
+                    ${c.title}
+                </div>
+                <div style="margin-bottom:5px;">
+                    <span style="background:${color}22; color:${color}; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:600;">
+                        ${c.priority}
+                    </span>
+                    <span style="background:${statusColor}22; color:${statusColor}; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:600; margin-left:5px;">
+                        ${c.status}
+                    </span>
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-top:5px;">
+                    📍 ${c.location} &nbsp;|&nbsp; 📁 ${c.category}
+                </div>
+                <a href="/complaint/${c.id}" style="display:inline-block; margin-top:8px; background:#4f46e5; color:white; padding:5px 12px; border-radius:6px; text-decoration:none; font-size:12px;">
+                    View Details
+                </a>
+            </div>
+        `);
+
+        marker.addTo(map);
+        allMarkers.push(marker);
+    });
+}
+
+function filterMarkers() {
+    var filter = document.getElementById('filterMap').value;
+    var filtered = filter === 'all' ? complaintsData : complaintsData.filter(c => c.status === filter);
+    addMarkers(filtered);
+}
+
+// Add legend
+var legend = L.control({ position: 'bottomright' });
+legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = `
+        <div style="font-weight:700; margin-bottom:8px; font-size:13px;">Priority</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Critical</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> High</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Medium</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Low</div>
+    `;
+    return div;
+};
+legend.addTo(map);
+
+// Initial load
+addMarkers(complaintsData);
+
+// Dark Mode
+function toggleDark() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    document.querySelector('.dark-toggle').textContent =
+        document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+}
+if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+    document.querySelector('.dark-toggle').textContent = '☀️';
+}
+</script>
+</body>
+</html>

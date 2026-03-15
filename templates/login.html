@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<script>
+function toggleDark() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    document.querySelector('.dark-toggle').textContent =
+        document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+}
+// Remember preference
+if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+    document.querySelector('.dark-toggle').textContent = '☀️';
+}
+</script>
+<body class="auth-body">
+
+    <div class="auth-card">
+        <div class="auth-logo">🛡️ ComplaintPro</div>
+        <h2>Welcome Back!</h2>
+        <p>Login to your account to continue</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-error">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%; padding:13px;">Login</button>
+        </form>
+
+        <div class="auth-link">
+            Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
+        </div>
+        <div class="auth-link">
+            <a href="{{ url_for('index') }}">← Back to Home</a>
+        </div>
+    </div>
+
+</body>
+</html>

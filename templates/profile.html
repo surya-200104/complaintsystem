@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="navbar-brand">🛡️ ComplaintPro</div>
+    <div class="navbar-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+        <span class="navbar-user">👤 {{ current_user.username }}</span>
+        <a href="{{ url_for('user_dashboard') }}" class="btn-outline btn-small">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Logout</a>
+    </div>
+</nav>
+
+<div class="page-wrapper">
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('user_dashboard') }}">🏠 Dashboard</a></li>
+            <li><a href="{{ url_for('submit_complaint') }}">📢 New Complaint</a></li>
+            <li><a href="{{ url_for('profile') }}" class="active">👤 Profile</a></li>
+            <li><a href="{{ url_for('logout') }}">🚪 Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+
+        <div class="page-title">My Profile</div>
+
+        <div class="profile-card">
+            <div class="profile-avatar">
+                {{ current_user.username[0].upper() }}
+            </div>
+            <div class="profile-info">
+                <h2>{{ current_user.username }}</h2>
+                <p>📧 {{ current_user.email }}</p>
+                <p>📱 {{ current_user.phone or 'Not provided' }}</p>
+                <p>📅 Member since {{ current_user.date_joined.strftime('%d-%m-%Y') }}</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">📋</div>
+                <div class="stat-info">
+                    <h3>{{ complaints | length }}</h3>
+                    <p>Total Complaints</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">⏳</div>
+                <div class="stat-info">
+                    <h3>{{ complaints | selectattr('status', 'equalto', 'Pending') | list | length }}</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon cyan">🔄</div>
+                <div class="stat-info">
+                    <h3>{{ complaints | selectattr('status', 'equalto', 'In Progress') | list | length }}</h3>
+                    <p>In Progress</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">✅</div>
+                <div class="stat-info">
+                    <h3>{{ complaints | selectattr('status', 'equalto', 'Resolved') | list | length }}</h3>
+                    <p>Resolved</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3>My Recent Complaints</h3>
+                <a href="{{ url_for('submit_complaint') }}" class="btn-primary btn-small">+ New Complaint</a>
+            </div>
+            {% if complaints %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for complaint in complaints %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ complaint.title }}</strong></td>
+                        <td>{{ complaint.category }}</td>
+                        <td>
+                            <span class="priority-badge priority-{{ complaint.priority.lower() }}">
+                                {{ complaint.priority }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if complaint.status == 'Pending' %}badge-pending
+                                {% elif complaint.status == 'In Progress' %}badge-progress
+                                {% else %}badge-resolved{% endif %}">
+                                {{ complaint.status }}
+                            </span>
+                        </td>
+                        <td>{{ complaint.date_posted.strftime('%d-%m-%Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('complaint_detail', id=complaint.id) }}" class="btn-outline btn-small">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding:40px; text-align:center; color:#64748b;">
+                <p style="font-size:40px;">📭</p>
+                <p style="margin-top:10px;">No complaints yet!</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function toggleDark() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        document.querySelector('.dark-toggle').textContent =
+            document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.dark-toggle').textContent = '☀️';
+    }
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

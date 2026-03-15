@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Complaint - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="navbar-brand">🛡️ ComplaintPro</div>
+    <div class="navbar-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+        <span class="navbar-user">👤 {{ current_user.username }}</span>
+        <a href="{{ url_for('user_dashboard') }}" class="btn-outline btn-small">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Logout</a>
+    </div>
+</nav>
+
+<div class="page-wrapper">
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('user_dashboard') }}">🏠 Dashboard</a></li>
+            <li><a href="{{ url_for('submit_complaint') }}" class="active">📢 New Complaint</a></li>
+            <li><a href="{{ url_for('profile') }}">👤 Profile</a></li>
+            <li><a href="{{ url_for('logout') }}">🚪 Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+
+        <div class="page-title">Submit a Complaint</div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-success">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-card">
+            <h2>📢 New Complaint</h2>
+            <p>Fill in the details below to submit your complaint</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Complaint Title</label>
+                    <input type="text" name="title" placeholder="Enter a clear and concise title" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📍 Location on Campus</label>
+                    <select name="location" required>
+                        <option value="">Select Location</option>
+                        <option value="Main Campus">🏫 Main Campus</option>
+                        <option value="Library">📚 Library</option>
+                        <option value="Canteen">🍽️ Canteen</option>
+                        <option value="Block A">🏢 Block A</option>
+                        <option value="Block B">🏢 Block B</option>
+                        <option value="Block C">🏢 Block C</option>
+                        <option value="Hostel">🏠 Hostel</option>
+                        <option value="Parking">🚗 Parking</option>
+                        <option value="Sports Ground">⚽ Sports Ground</option>
+                        <option value="Lab">💻 Lab</option>
+                        <option value="Admin Office">🏛️ Admin Office</option>
+                        <option value="Seminar Hall">🎓 Seminar Hall</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select name="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Infrastructure">🏗️ Infrastructure</option>
+                            <option value="Service">🛎️ Service</option>
+                            <option value="Staff">👥 Staff</option>
+                            <option value="Electrical">⚡ Electrical</option>
+                            <option value="Cleanliness">🧹 Cleanliness</option>
+                            <option value="Security">🔒 Security</option>
+                            <option value="Other">📌 Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority Level</label>
+                        <select name="priority" required>
+                            <option value="">Select Priority</option>
+                            <option value="Low">🟢 Low</option>
+                            <option value="Medium">🟡 Medium</option>
+                            <option value="High">🟠 High</option>
+                            <option value="Critical">🔴 Critical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="6" placeholder="Describe your complaint in detail..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Attach File (Optional)</label>
+                    <input type="file" name="attachment" accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx">
+                    <small style="color:#64748b; font-size:12px;">Supported: Images, PDF, Word Documents (Max 16MB)</small>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width:100%; padding:13px; font-size:15px;">
+                    🚀 Submit Complaint
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function toggleDark() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        document.querySelector('.dark-toggle').textContent =
+            document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.dark-toggle').textContent = '☀️';
+    }
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
