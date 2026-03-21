@@ -7,7 +7,10 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from groq import Groq
 from threading import Timer
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret123'
@@ -412,6 +415,5 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     check_escalations()
-    socketio.run(app, debug=True, use_reloader=False)
-
-
+   port = int(os.environ.get("PORT", 5000))
+socketio.run(app, host="0.0.0.0", port=port, debug=False, use_reloader=False)
