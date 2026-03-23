@@ -1,6 +1,3 @@
-from gevent import monkey
-monkey.patch_all()
-
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
@@ -26,7 +23,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 os.makedirs('static/uploads', exist_ok=True)
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -153,8 +150,9 @@ def check_escalations():
                 print(f"Auto Escalated: {complaint.title}")
         except Exception as e:
             print(f"Escalation error: {e}")
-    from gevent import spawn_later
-    spawn_later(3600, check_escalations)
+    t = Timer(3600, check_escalations)
+    t.daemon = True
+    t.start()
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

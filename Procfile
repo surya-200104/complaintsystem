@@ -1,2 +1,3 @@
-web: gunicorn --worker-class gevent -w 1 app:app
+web: gunicorn --worker-class gthread --threads 4 -w 1 app:app
+
 
