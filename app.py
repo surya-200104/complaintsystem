@@ -418,6 +418,23 @@ def on_join(data):
     room = data['room']
     join_room(room)
 
+    @app.route('/create-admin-surya')
+def create_admin():
+    from werkzeug.security import generate_password_hash
+    existing = User.query.filter_by(email='admin@complaintsystem.com').first()
+    if existing:
+        return 'Admin already exists!'
+    admin = User(
+        username='admin',
+        email='admin@complaintsystem.com',
+        phone='9999999999',
+        password=generate_password_hash('admin123'),
+        is_admin=True
+    )
+    db.session.add(admin)
+    db.session.commit()
+    return 'Admin created! Email: admin@complaintsystem.com Password: admin123'
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
