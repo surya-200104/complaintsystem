@@ -153,7 +153,8 @@ def check_escalations():
                 print(f"Auto Escalated: {complaint.title}")
         except Exception as e:
             print(f"Escalation error: {e}")
-    Timer(3600, check_escalations).start()
+    from gevent import spawn_later
+    spawn_later(3600, check_escalations)
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
