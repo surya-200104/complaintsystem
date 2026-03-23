@@ -26,7 +26,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
+with app.app_context():
+    db.create_all()
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 def allowed_file(filename):
