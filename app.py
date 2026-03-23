@@ -203,22 +203,6 @@ class Reply(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.route('/create-admin-surya')
-def create_admin():
-    existing = User.query.filter_by(email='admin@complaintsystem.com').first()
-    if existing:
-        return 'Admin already exists! Email: admin@complaintsystem.com Password: admin123'
-    admin = User(
-        username='admin',
-        email='admin@complaintsystem.com',
-        phone='9999999999',
-        password=generate_password_hash('admin123'),
-        is_admin=True
-    )
-    db.session.add(admin)
-    db.session.commit()
-    return 'Admin created! Email: admin@complaintsystem.com Password: admin123'
-
 @app.route('/')
 def index():
     return render_template('landing.html')
