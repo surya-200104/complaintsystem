@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
@@ -8,6 +11,7 @@ from datetime import datetime, timedelta
 from groq import Groq
 from threading import Timer
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 import os
 
 load_dotenv()
@@ -15,6 +19,7 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret123'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///complaints.db').replace("postgres://", "postgresql://")
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'poolclass': NullPool}
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -26,8 +31,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-with app.app_context():
-    db.create_all()
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 def allowed_file(filename):
