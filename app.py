@@ -26,6 +26,9 @@ db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+with app.app_context():
+    db.create_all()
+    print("Database tables created!")
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
