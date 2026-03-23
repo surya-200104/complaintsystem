@@ -14,7 +14,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret123'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///complaints.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///complaints.db').replace("postgres://", "postgresql://")
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -415,5 +415,5 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     check_escalations()
-   port = int(os.environ.get("PORT", 5000))
-socketio.run(app, host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=False, use_reloader=False)
