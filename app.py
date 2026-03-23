@@ -26,6 +26,7 @@ db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
 with app.app_context():
     db.create_all()
     print("Database tables created!")
@@ -201,6 +202,22 @@ class Reply(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.route('/create-admin-surya')
+def create_admin():
+    existing = User.query.filter_by(email='admin@complaintsystem.com').first()
+    if existing:
+        return 'Admin already exists! Email: admin@complaintsystem.com Password: admin123'
+    admin = User(
+        username='admin',
+        email='admin@complaintsystem.com',
+        phone='9999999999',
+        password=generate_password_hash('admin123'),
+        is_admin=True
+    )
+    db.session.add(admin)
+    db.session.commit()
+    return 'Admin created! Email: admin@complaintsystem.com Password: admin123'
 
 @app.route('/')
 def index():
@@ -417,23 +434,6 @@ def profile():
 def on_join(data):
     room = data['room']
     join_room(room)
-
-    @app.route('/create-admin-surya')
-def create_admin():
-    from werkzeug.security import generate_password_hash
-    existing = User.query.filter_by(email='admin@complaintsystem.com').first()
-    if existing:
-        return 'Admin already exists!'
-    admin = User(
-        username='admin',
-        email='admin@complaintsystem.com',
-        phone='9999999999',
-        password=generate_password_hash('admin123'),
-        is_admin=True
-    )
-    db.session.add(admin)
-    db.session.commit()
-    return 'Admin created! Email: admin@complaintsystem.com Password: admin123'
 
 if __name__ == '__main__':
     with app.app_context():
