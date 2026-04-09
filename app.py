@@ -416,11 +416,11 @@ def profile():
 
 @app.route('/reset-admin-temp')
 def reset_admin_temp():
-    admin = User.query.filter_by(email='admin@complaintsystem.com').first()
+    admin = User.query.filter_by(is_admin=True).first()
     if admin:
         admin.password = generate_password_hash('Admin@123')
         db.session.commit()
-        return 'Password reset to Admin@123 ✅'
+        return f'Password reset! Email is: {admin.email}'
     return 'Admin not found ❌'
 
 @socketio.on('join')
