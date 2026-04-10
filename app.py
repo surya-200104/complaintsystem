@@ -9,6 +9,7 @@ from groq import Groq
 from threading import Timer
 from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
+from sqlalchemy import text
 import os
 
 load_dotenv()
@@ -167,7 +168,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(500))
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
-    is_staff = db.Column(db.Boolean, default=False)   # ← NEW
+    is_staff = db.Column(db.Boolean, default=False)
     date_joined = db.Column(db.DateTime, default=datetime.utcnow)
     complaints = db.relationship('Complaint', backref='author', lazy=True)
 
@@ -471,21 +472,56 @@ def reset_admin_temp():
         return f'Password reset! Email is: {admin.email}'
     return 'Admin not found ❌'
 
-# ─── CREATE STAFF USER (run once) ─────────────────────────────────────────────
-# Visit http://localhost:5000/create-staff once to create staff user
-@app.route('/create-staff')
-def create_staff():
-    if User.query.filter_by(email='staff@test.com').first():
-        return 'Staff already exists! Login with staff@test.com / staff123'
-    staff = User(
-        username='staff1',
-        email='staff@test.com',
-        password=generate_password_hash('staff123'),
-        is_staff=True
-    )
-    db.session.add(staff)
+# ─── SETUP DB + ALL TEST USERS (visit once on Render) ─────────────────────────
+@app.route('/setup-db')
+def setup_db():
+    # Add is_staff column if not exists (for PostgreSQL)
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE "user" ADD COLUMN is_staff BOOLEAN DEFAULT FALSE'))
+            conn.commit()
+    except Exception as e:
+        print(f"Column may already exist: {e}")
+
+    db.create_all()
+
+    # Create all test users
+    users_to_create = [
+        {'username': 'staff1',  'email': 'staff@test.com',  'password': 'staff123',  'is_staff': True,  'is_admin': False},
+        {'username': 'user1',   'email': 'user1@test.com',  'password': 'user123',   'is_staff': False, 'is_admin': False},
+        {'username': 'user2',   'email': 'user2@test.com',  'password': 'user123',   'is_staff': False, 'is_admin': False},
+        {'username': 'user3',   'email': 'user3@test.com',  'password': 'user123',   'is_staff': False, 'is_admin': False},
+    ]
+
+    created = []
+    skipped = []
+
+    for u in users_to_create:
+        if not User.query.filter_by(email=u['email']).first():
+            new_user = User(
+                username=u['username'],
+                email=u['email'],
+                password=generate_password_hash(u['password']),
+                is_staff=u['is_staff'],
+                is_admin=u['is_admin']
+            )
+            db.session.add(new_user)
+            created.append(u['email'])
+        else:
+            skipped.append(u['email'])
+
     db.session.commit()
-    return 'Staff created! Email: staff@test.com | Password: staff123'
+
+    return f'''
+    <h2>✅ Setup Complete!</h2>
+    <b>Created:</b> {created}<br>
+    <b>Already existed:</b> {skipped}<br><br>
+    <h3>Login Credentials:</h3>
+    <b>Staff:</b> staff@test.com / staff123 → /staff/dashboard<br>
+    <b>User1:</b> user1@test.com / user123<br>
+    <b>User2:</b> user2@test.com / user123<br>
+    <b>User3:</b> user3@test.com / user123<br>
+    '''
 
 # ─── SOCKETIO ─────────────────────────────────────────────────────────────────
 
