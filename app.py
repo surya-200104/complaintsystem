@@ -158,6 +158,8 @@ def check_escalations():
     t.daemon = True
     t.start()
 
+# ─── MODELS ───────────────────────────────────────────────────────────────────
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True)
@@ -165,6 +167,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(500))
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
+    is_staff = db.Column(db.Boolean, default=False)   # ← NEW
     date_joined = db.Column(db.DateTime, default=datetime.utcnow)
     complaints = db.relationship('Complaint', backref='author', lazy=True)
 
@@ -199,6 +202,8 @@ class Reply(db.Model):
     complaint_id = db.Column(db.Integer, db.ForeignKey('complaint.id'))
     user = db.relationship('User', backref='replies')
 
+# ─── AUTH ─────────────────────────────────────────────────────────────────────
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -231,7 +236,12 @@ def login():
         user = User.query.filter_by(email=request.form['email']).first()
         if user and check_password_hash(user.password, request.form['password']):
             login_user(user)
-            return redirect(url_for('admin_dashboard') if user.is_admin else url_for('user_dashboard'))
+            if user.is_admin:
+                return redirect(url_for('admin_dashboard'))
+            elif user.is_staff:
+                return redirect(url_for('staff_dashboard'))
+            else:
+                return redirect(url_for('user_dashboard'))
         flash('Invalid email or password!')
     return render_template('login.html')
 
@@ -240,6 +250,8 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+# ─── USER ROUTES ──────────────────────────────────────────────────────────────
 
 @app.route('/user/dashboard')
 @login_required
@@ -306,7 +318,7 @@ def submit_complaint():
 @login_required
 def complaint_detail(id):
     complaint = Complaint.query.get_or_404(id)
-    if not current_user.is_admin and complaint.user_id != current_user.id:
+    if not current_user.is_admin and not current_user.is_staff and complaint.user_id != current_user.id:
         return redirect(url_for('user_dashboard'))
     replies = Reply.query.filter_by(complaint_id=id).order_by(Reply.date_posted.asc()).all()
     return render_template('complaint_detail.html', complaint=complaint, replies=replies)
@@ -317,7 +329,7 @@ def add_reply(id):
     complaint = Complaint.query.get_or_404(id)
     reply = Reply(
         message=request.form['message'],
-        is_admin=current_user.is_admin,
+        is_admin=current_user.is_admin or current_user.is_staff,
         user_id=current_user.id,
         complaint_id=id
     )
@@ -356,6 +368,40 @@ def submit_feedback(id):
     db.session.commit()
     flash('Thank you for your feedback!')
     return redirect(url_for('complaint_detail', id=id))
+
+# ─── STAFF ROUTES ─────────────────────────────────────────────────────────────
+
+@app.route('/staff/dashboard')
+@login_required
+def staff_dashboard():
+    if not current_user.is_staff and not current_user.is_admin:
+        return redirect(url_for('user_dashboard'))
+    complaints = Complaint.query.order_by(Complaint.date_posted.desc()).all()
+    total = len(complaints)
+    pending = len([c for c in complaints if c.status == 'Pending'])
+    in_progress = len([c for c in complaints if c.status == 'In Progress'])
+    resolved = len([c for c in complaints if c.status == 'Resolved'])
+    return render_template('staff_dashboard.html', complaints=complaints,
+                           total=total, pending=pending,
+                           in_progress=in_progress, resolved=resolved)
+
+@app.route('/staff/update/<int:id>', methods=['POST'])
+@login_required
+def staff_update_status(id):
+    if not current_user.is_staff and not current_user.is_admin:
+        return redirect(url_for('user_dashboard'))
+    complaint = Complaint.query.get_or_404(id)
+    complaint.status = request.form['status']
+    complaint.updated_at = datetime.utcnow()
+    db.session.commit()
+    socketio.emit('status_update', {
+        'id': id,
+        'status': complaint.status
+    })
+    flash('Status updated successfully!')
+    return redirect(url_for('staff_dashboard'))
+
+# ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
 
 @app.route('/admin/dashboard')
 @login_required
@@ -408,6 +454,8 @@ def heatmap():
     } for c in complaints]
     return render_template('heatmap.html', complaints=complaint_data)
 
+# ─── MISC ROUTES ──────────────────────────────────────────────────────────────
+
 @app.route('/profile')
 @login_required
 def profile():
@@ -423,10 +471,30 @@ def reset_admin_temp():
         return f'Password reset! Email is: {admin.email}'
     return 'Admin not found ❌'
 
+# ─── CREATE STAFF USER (run once) ─────────────────────────────────────────────
+# Visit http://localhost:5000/create-staff once to create staff user
+@app.route('/create-staff')
+def create_staff():
+    if User.query.filter_by(email='staff@test.com').first():
+        return 'Staff already exists! Login with staff@test.com / staff123'
+    staff = User(
+        username='staff1',
+        email='staff@test.com',
+        password=generate_password_hash('staff123'),
+        is_staff=True
+    )
+    db.session.add(staff)
+    db.session.commit()
+    return 'Staff created! Email: staff@test.com | Password: staff123'
+
+# ─── SOCKETIO ─────────────────────────────────────────────────────────────────
+
 @socketio.on('join')
 def on_join(data):
     room = data['room']
     join_room(room)
+
+# ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     with app.app_context():

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard - ComplaintPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+
+<!-- Notification Toast -->
+<div class="notification-toast" id="toast"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="navbar-brand">🛠️ ComplaintPro Staff</div>
+    <div class="navbar-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+        <span class="navbar-user">👤 {{ current_user.username }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Logout</a>
+    </div>
+</nav>
+
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('staff_dashboard') }}" class="active">🛠️ Dashboard</a></li>
+            <li><a href="{{ url_for('logout') }}">🚪 Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-success">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="page-title">Staff Dashboard</div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="stat-card">
+                <div class="stat-icon blue">📋</div>
+                <div class="stat-info">
+                    <h3>{{ total }}</h3>
+                    <p>Total Complaints</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">⏳</div>
+                <div class="stat-info">
+                    <h3>{{ pending }}</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon cyan">🔄</div>
+                <div class="stat-info">
+                    <h3>{{ in_progress }}</h3>
+                    <p>In Progress</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">✅</div>
+                <div class="stat-info">
+                    <h3>{{ resolved }}</h3>
+                    <p>Resolved</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Complaints Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3>All Complaints</h3>
+            </div>
+            {% if complaints %}
+            <table id="complaintsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for complaint in complaints %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <strong>{{ complaint.title }}</strong>
+                            {% if complaint.priority == 'Critical' and complaint.status == 'Pending' %}
+                            <span style="background:#fee2e2; color:#dc2626; font-size:10px; padding:2px 7px; border-radius:10px; margin-left:5px; font-weight:600;">🚨 Escalated</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ complaint.category }}</td>
+                        <td>
+                            <span class="priority-badge priority-{{ complaint.priority.lower() }}">
+                                {{ complaint.priority }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if complaint.status == 'Pending' %}badge-pending
+                                {% elif complaint.status == 'In Progress' %}badge-progress
+                                {% else %}badge-resolved{% endif %}">
+                                {{ complaint.status }}
+                            </span>
+                        </td>
+                        <td>{{ complaint.date_posted.strftime('%d-%m-%Y') }}</td>
+                        <td style="display:flex; gap:8px; align-items:center;">
+                            <a href="{{ url_for('complaint_detail', id=complaint.id) }}"
+                               class="btn-outline btn-small">View</a>
+                            <form method="POST" action="{{ url_for('staff_update_status', id=complaint.id) }}"
+                                  style="display:flex; gap:6px;">
+                                <select name="status" style="padding:5px 8px; border:1.5px solid #e2e8f0; border-radius:6px; font-size:12px;">
+                                    <option value="Pending" {% if complaint.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                    <option value="In Progress" {% if complaint.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="Resolved" {% if complaint.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                                </select>
+                                <button type="submit" class="btn-primary btn-small">Update</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding:40px; text-align:center; color:#64748b;">
+                <p style="font-size:40px;">📭</p>
+                <p style="margin-top:10px;">No complaints yet!</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+    var socket = io();
+
+    socket.on('escalation_alert', function(data) {
+        var toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        toast.style.background = '#dc2626';
+        toast.innerHTML = '🚨 <strong>' + data.title + '</strong> has been auto-escalated to Critical!';
+        setTimeout(function() {
+            toast.style.display = 'none';
+            location.reload();
+        }, 4000);
+    });
+
+    socket.on('status_update', function(data) {
+        location.reload();
+    });
+
+    function toggleDark() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        document.querySelector('.dark-toggle').textContent =
+            document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.dark-toggle').textContent = '☀️';
+    }
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
