@@ -487,6 +487,7 @@ def setup_db():
 
     # Create all test users
     users_to_create = [
+        {'username': 'admin', 'email': 'admin@test.com', 'password': 'Admin@123', 'is_staff': False, 'is_admin': True},
         {'username': 'staff1',  'email': 'staff@test.com',  'password': 'staff123',  'is_staff': True,  'is_admin': False},
         {'username': 'user1',   'email': 'user1@test.com',  'password': 'user123',   'is_staff': False, 'is_admin': False},
         {'username': 'user2',   'email': 'user2@test.com',  'password': 'user123',   'is_staff': False, 'is_admin': False},
